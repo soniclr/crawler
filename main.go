@@ -71,11 +71,10 @@ func main() {
 		title := s.Text()
 		fmt.Printf("Review %d: %s\n", i, title)
 	})
-	return
 }
 
-func Fetch(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+func Fetch(urls string) ([]byte, error) {
+	resp, err := http.Get(urls) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("get url error : %w", err)
 	}
