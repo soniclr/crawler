@@ -34,7 +34,7 @@ func main() {
 	url := "https://www.thepaper.cn/"
 	body, err := Fetch(url)
 	if err != nil {
-		fmt.Println("read content failed:%v", err)
+		fmt.Printf("read content failed:%v\n", err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func main() {
 
 	doc, err := htmlquery.Parse(bytes.NewReader(body))
 	if err != nil {
-		fmt.Println("htmlquery.Parse failed:%v", err)
+		fmt.Printf("htmlquery.Parse failed:%v\n", err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func main() {
 	fmt.Println("==== use goquery ==== ")
 	docs, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
-		fmt.Println("goquery.NewDocumentFromReader failed:%v", err)
+		fmt.Printf("goquery.NewDocumentFromReader failed:%v\n", err)
 		return
 	}
 
@@ -75,7 +75,7 @@ func main() {
 }
 
 func Fetch(url string) ([]byte, error) {
-	resp, err := http.Get(url) //nolint:gosec
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("get url error : %w", err)
 	}
