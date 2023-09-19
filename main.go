@@ -11,8 +11,32 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 )
 
 func main() {
-	fmt.Println("Hello Crawler!")
+	url := "https://www.thepaper.cn/"
+	resp, err := http.Get(url)
+
+	if err != nil {
+		fmt.Println("http get error", err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("http get error :%v, status code : %v\n", err, resp.StatusCode)
+		return
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		fmt.Println("read body error", err)
+		return
+	}
+
+	fmt.Println("body: ", string(body))
 }

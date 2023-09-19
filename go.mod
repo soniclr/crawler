@@ -1,3 +1,3 @@
-module crawler
+module github.com/soniclr/crawler
 
-go 1.21
+go 1.21.0
