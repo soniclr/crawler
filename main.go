@@ -10,32 +10,69 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
+	"context"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/antchfx/htmlquery"
-
-	"golang.org/x/net/html/charset"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/unicode"
-	"golang.org/x/text/transform"
+	"github.com/chromedp/chromedp"
+	"github.com/soniclr/crawler/collect"
 )
 
 func main() {
+	if err := ChromeDB(); err != nil {
+		fmt.Println(err)
+	}
+}
+
+func ChromeDB() error {
+	// 1、创建谷歌浏览器实例
+	ctx, cancel := chromedp.NewContext(
+		context.Background(),
+	)
+	defer cancel()
+
+	// 2、设置context超时时间
+	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	// 3、爬取页面，等待某一个元素出现,接着模拟鼠标点击，最后获取数据
+	var example string
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(`https://pkg.go.dev/time`),
+		chromedp.WaitVisible(`body > footer`),
+		chromedp.Click(`#example-After`, chromedp.NodeVisible),
+		chromedp.Value(`#example-After textarea`, &example),
+	)
+
+	if err != nil {
+		fmt.Printf("chromedp.Run error:%v", err)
+		return err
+	}
+
+	log.Printf("Go's time.After example:\\n%s", example)
+
+	return nil
+}
+
+func FetcherCount() error {
 	var headerRe = regexp.MustCompile(`<div class="small_cardcontent__BTALp"[\s\S]*?<h2>([\s\S]*?)</h2>`)
 
+	// url := "https://book.douban.com/subject/1007305/"
 	url := "https://www.thepaper.cn/"
-	body, err := Fetch(url)
+
+	var f collect.Fetcher = &collect.BrowserFetcher{
+		Timeout: 300 * time.Millisecond,
+	}
+	body, err := f.Get(url)
 	if err != nil {
 		fmt.Printf("read content failed:%v\n", err)
-		return
+		return err
 	}
 
 	matches := headerRe.FindAllSubmatch(body, -1)
@@ -51,7 +88,7 @@ func main() {
 	doc, err := htmlquery.Parse(bytes.NewReader(body))
 	if err != nil {
 		fmt.Printf("htmlquery.Parse failed:%v\n", err)
-		return
+		return err
 	}
 
 	nodes := htmlquery.Find(doc, `//div[@class="small_cardcontent__BTALp"]//a[@target="_blank"]`)
@@ -63,7 +100,7 @@ func main() {
 	docs, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
 		fmt.Printf("goquery.NewDocumentFromReader failed:%v\n", err)
-		return
+		return err
 	}
 
 	docs.Find("div.small_cardcontent__BTALp a[target=_blank]").Each(func(i int, s *goquery.Selection) {
@@ -71,38 +108,6 @@ func main() {
 		title := s.Text()
 		fmt.Printf("Review %d: %s\n", i, title)
 	})
-}
 
-func Fetch(urls string) ([]byte, error) {
-	resp, err := http.Get(urls) //nolint:gosec
-	if err != nil {
-		return nil, fmt.Errorf("get url error : %w", err)
-	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			return
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get url error : status code %v", resp.StatusCode)
-	}
-
-	bodyReader := bufio.NewReader(resp.Body)
-	e := DetermineEncoding(bodyReader)
-	utf8Reader := transform.NewReader(bodyReader, e.NewDecoder())
-	return io.ReadAll(utf8Reader)
-}
-
-func DetermineEncoding(r *bufio.Reader) encoding.Encoding {
-	byteSrc, err := r.Peek(1024)
-	if err != nil {
-		log.Printf("fetcher error : %v", err)
-		return unicode.UTF8
-	}
-
-	e, _, _ := charset.DetermineEncoding(byteSrc, "")
-	return e
+	return nil
 }
